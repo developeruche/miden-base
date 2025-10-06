@@ -40,6 +40,7 @@ pub use notes_checker::{
     MAX_NUM_CHECKER_NOTES,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
+    NoteConsumptionStatus,
 };
 
 // TRANSACTION EXECUTOR
@@ -188,10 +189,12 @@ where
             self.prepare_transaction(&tx_inputs, &tx_args, None).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-        let (stack_outputs, advice_provider) = processor
+        let output = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
             .map_err(map_execution_error)?;
+        let stack_outputs = output.stack;
+        let advice_provider = output.advice;
 
         // The stack is not necessary since it is being reconstructed when re-executing.
         let (_stack, advice_map, merkle_store) = advice_provider.into_parts();
@@ -235,10 +238,11 @@ where
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
-        let (stack_outputs, _advice_provider) = processor
+        let output = processor
             .execute(&TransactionKernel::tx_script_main(), &mut host)
             .await
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        let stack_outputs = output.stack;
 
         Ok(*stack_outputs)
     }
@@ -478,6 +482,9 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
                         account_balance: *account_balance,
                         tx_fee: *tx_fee,
                     }
+                },
+                Some(TransactionKernelError::MissingAuthenticator) => {
+                    TransactionExecutorError::MissingAuthenticator
                 },
                 _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
             }
