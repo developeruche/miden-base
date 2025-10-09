@@ -65,3 +65,6 @@ rand           = { default-features = false, version = "0.9" }
 rstest         = { version = "0.26" }
 thiserror      = { default-features = false, version = "2.0" }
 tokio          = { default-features = false, features = ["sync"], version = "1" }
+
+[patch.crates-io]
+miden-crypto = { path = "../miden-crypto-bernhard-part2-1227-smt-generic/miden-crypto" }
